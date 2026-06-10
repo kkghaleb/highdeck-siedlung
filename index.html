@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Brandbrief · Unterschriften — Weiße Siedlung</title>
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+  :root{
+    --paper:#E4E9EE; --paper2:#EDF1F4; --ink:#222A31; --muted:#67737F; --hair:#C4CCD4;
+    --line:#8B96A2; --ember:#E0533A; --gold:#E9C45E; --slate0:#93A0AD;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  #map{position:absolute;inset:0}
+  .maplibregl-popup-content{background:var(--paper2);color:var(--ink);border:1px solid var(--hair);
+    border-radius:5px;padding:11px 13px;box-shadow:0 8px 22px rgba(40,55,70,.18)}
+  .maplibregl-popup-tip{border-top-color:var(--paper2)!important;border-bottom-color:var(--paper2)!important}
+  .pop-l{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:16px}
+  .pop-a{color:var(--muted);font-size:11.5px;margin:2px 0 7px;font-family:"IBM Plex Mono"}
+  .pop-s{font-family:"IBM Plex Mono";font-weight:600;font-size:13px}.pop-s b{color:var(--ember);font-size:15px}
+
+  /* drafting title-block */
+  .block{position:absolute;z-index:5;background:rgba(238,241,244,.92);backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);border:1px solid var(--hair);border-radius:5px;
+    box-shadow:0 6px 24px rgba(40,55,70,.14)}
+  #hud{top:14px;left:14px;width:286px}
+  .row{padding:11px 16px}
+  .hl{border-top:1px solid var(--hair)}
+  .eyebrow{font-family:"IBM Plex Mono";font-size:9.5px;letter-spacing:.16em;color:var(--muted);
+    text-transform:uppercase;margin:0}
+  h1{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:21px;line-height:1.05;margin:5px 0 0;letter-spacing:-.01em}
+  .total{display:flex;align-items:baseline;gap:10px}
+  .total b{font-family:"IBM Plex Mono";font-weight:600;font-size:38px;line-height:.95;color:var(--ember);font-variant-numeric:tabular-nums}
+  .total small{font-family:"IBM Plex Mono";font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .sub{font-family:"IBM Plex Mono";font-size:11px;line-height:1.5;color:var(--muted);margin-top:7px}
+  .sub b{color:var(--ink)}.sub .z{color:#C9772A;font-weight:600}
+  .foot{display:flex;align-items:center;gap:8px;font-family:"IBM Plex Mono";font-size:10px;color:var(--muted)}
+  .foot .ic{flex:none}
+  #refresh{margin-left:auto;background:none;border:1px solid var(--hair);color:var(--ink);
+    font-family:"IBM Plex Mono";font-size:10px;border-radius:4px;padding:4px 8px;cursor:pointer}
+  #refresh:hover{border-color:var(--ember);color:var(--ember)}
+  #refresh:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+
+  #legend{bottom:14px;left:14px;padding:12px 14px}
+  .leg-t{font-family:"IBM Plex Mono";font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+  .ramp{height:9px;border-radius:5px;border:1px solid var(--hair);
+    background:linear-gradient(90deg,#A9B4BE,#E9C45E,#EFA84C,#EC8044,#E0533A)}
+  .ramp-x{display:flex;justify-content:space-between;font-family:"IBM Plex Mono";font-size:9.5px;color:var(--muted);margin-top:4px}
+  .leg-row{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11.5px;font-family:"IBM Plex Mono";color:var(--ink)}
+  .ring{width:13px;height:13px;border-radius:50%;flex:none;background:transparent;border:1.6px solid var(--slate0)}
+  .attrib{position:absolute;bottom:6px;right:8px;z-index:4;font-size:10px;color:#7d8893;font-family:"IBM Plex Mono"}
+  .attrib a{color:#5f6b76;text-decoration:none}
+  @media (max-width:560px){#hud{width:calc(100vw - 28px)}.total b{font-size:32px}}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="block" id="hud">
+  <div class="row">
+    <p class="eyebrow">Kiez-Initiative · Weiße Siedlung</p>
+    <h1>Brandbrief — Unterschriften</h1>
+  </div>
+  <div class="row hl">
+    <div class="total"><b id="tot">–</b><small>Unterschriften<br>gesamt</small></div>
+    <div class="sub" id="sub"></div>
+  </div>
+  <div class="row hl foot"><span class="ic">⏳</span><span id="statustxt">Lädt Daten …</span>
+    <button id="refresh">aktualisieren</button></div>
+</div>
+<div class="block" id="legend">
+  <p class="leg-t">Unterschriften pro Haus</p>
+  <div class="ramp"></div>
+  <div class="ramp-x"><span>1</span><span>4</span><span>8 +</span></div>
+  <div class="leg-row"><span class="ring"></span>0 — Besuch nötig</div>
+</div>
+<div class="attrib">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://carto.com/attributions">CARTO</a> · MapLibre</div>
+<script>
+const SHEET_ID="1cGkrxuo2F81q2T08D5OAnveeNJCHD-3hE_OP3YxGkl4", GID="655171356", REFRESH_MS=60000;
+const COORDS={"Fritzi-Massary-Straße||1": [13.4766157, 52.4621422], "Fritzi-Massary-Straße||2": [13.4755767, 52.4620158], "Fritzi-Massary-Straße||3": [13.4765897, 52.4620549], "Fritzi-Massary-Straße||4": [13.4755611, 52.4621753], "Fritzi-Massary-Straße||5": [13.4764338, 52.4619861], "Fritzi-Massary-Straße||6": [13.4755921, 52.4622868], "Fritzi-Massary-Straße||7": [13.4763967, 52.4619048], "Fritzi-Massary-Straße||8": [13.4755855, 52.4624474], "Fritzi-Massary-Straße||9": [13.4763067, 52.4618985], "Fritzi-Massary-Straße||10": [13.4755573, 52.4626885], "Fritzi-Massary-Straße||11": [13.4762428, 52.4618409], "Fritzi-Massary-Straße||12": [13.4750183, 52.4626527], "Fritzi-Massary-Straße||13": [13.4761799, 52.4617905], "Fritzi-Massary-Straße||14": [13.4750189, 52.462493], "Fritzi-Massary-Straße||15": [13.4761155, 52.4617423], "Fritzi-Massary-Straße||16": [13.4750196, 52.4623334], "Fritzi-Massary-Straße||17": [13.4758842, 52.4616202], "Fritzi-Massary-Straße||18": [13.4750203, 52.4621737], "Fritzi-Massary-Straße||19": [13.4757941, 52.4616202], "Fritzi-Massary-Straße||20": [13.475021, 52.4620141], "Fritzi-Massary-Straße||21": [13.4756943, 52.4616202], "Fritzi-Massary-Straße||23": [13.4755843, 52.4616202], "Fritzi-Massary-Straße||25": [13.4754742, 52.4616202], "Fritzi-Massary-Straße||27": [13.4753244, 52.4616202], "Fritzi-Massary-Straße||29": [13.4751644, 52.4616202], "Fritzi-Massary-Straße||31": [13.4750922, 52.4616507], "Fritzi-Massary-Straße||33": [13.4749743, 52.4616202], "Fritzi-Massary-Straße||35": [13.4748744, 52.4616202], "Fritzi-Massary-Straße||37": [13.4747643, 52.4616202], "Fritzi-Massary-Straße||39": [13.4746042, 52.4616202], "Fritzi-Massary-Straße||41": [13.4744443, 52.4616102], "Fritzi-Massary-Straße||45": [13.4742944, 52.4616202], "Fritzi-Massary-Straße||47": [13.4741942, 52.4616202], "Fritzi-Massary-Straße||49": [13.4740391, 52.4616489], "Fritzi-Massary-Straße||51": [13.4739243, 52.4616202], "Fritzi-Massary-Straße||53": [13.4737141, 52.4616102], "Fritzi-Massary-Straße||55": [13.4736143, 52.4616202], "Fritzi-Massary-Straße||57": [13.4735143, 52.4616202], "Fritzi-Massary-Straße||59": [13.4734232, 52.4616453], "Fritzi-Massary-Straße||61": [13.4753121, 52.4623506], "Fritzi-Massary-Straße||63": [13.4752858, 52.462103], "Fritzi-Massary-Straße||65": [13.4755336, 52.4617641], "Fritzi-Massary-Straße||67": [13.4751014, 52.4617777], "Fritzi-Massary-Straße||69": [13.4749754, 52.4617683], "Fritzi-Massary-Straße||71": [13.4749436, 52.4617486], "Fritzi-Massary-Straße||73": [13.4762971, 52.4618391], "Fritzi-Massary-Straße||75": [13.4763127, 52.4618774], "Fritzi-Massary-Straße||77": [13.476348, 52.4618148], "Fritzi-Massary-Straße||79": [13.4763455, 52.461814], "Fritzi-Massary-Straße||81": [13.4763456, 52.461814], "Fritzi-Massary-Straße||83": [13.4748537, 52.4616467], "Fritzi-Massary-Straße||85": [13.476348, 52.4618148], "Fritzi-Massary-Straße||87": [13.4759412, 52.4616506], "Fritzi-Massary-Straße||89": [13.4756668, 52.4615779], "Fritzi-Massary-Straße||91": [13.4747757, 52.4617598], "Fritzi-Massary-Straße||93": [13.4757583, 52.4616457], "Fritzi-Massary-Straße||95": [13.4755096, 52.4616477], "Fritzi-Massary-Straße||97": [13.4747232, 52.4617598], "Fritzi-Massary-Straße||99": [13.4754253, 52.4616475], "Fritzi-Massary-Straße||101": [13.4756668, 52.4615779], "Fritzi-Massary-Straße||103": [13.4756668, 52.4615779], "Fritzi-Massary-Straße||105": [13.4752038, 52.4616221], "Fritzi-Massary-Straße||107": [13.4751938, 52.4616471], "Fritzi-Massary-Straße||109": [13.4738565, 52.4616509], "Fritzi-Massary-Straße||111": [13.4748337, 52.4616457], "Fritzi-Massary-Straße||113": [13.4745913, 52.4616465], "Fritzi-Massary-Straße||115": [13.4745761, 52.4617711], "Fritzi-Massary-Straße||117": [13.4746908, 52.461635], "Fritzi-Massary-Straße||119": [13.4749686, 52.4615781], "Fritzi-Massary-Straße||121": [13.4745897, 52.4616352], "Fritzi-Massary-Straße||123": [13.4744801, 52.461633], "Fritzi-Massary-Straße||125": [13.4744828, 52.4616453], "Fritzi-Massary-Straße||127": [13.4744647, 52.4616464], "Fritzi-Massary-Straße||129": [13.4742377, 52.461646], "Fritzi-Massary-Straße||131": [13.4740933, 52.4615806], "Fritzi-Massary-Straße||133": [13.4740933, 52.4615806], "Fritzi-Massary-Straße||135": [13.4739779, 52.4616195], "Fritzi-Massary-Straße||137": [13.4743762, 52.4617823], "Fritzi-Massary-Straße||139": [13.4738469, 52.4616158], "Fritzi-Massary-Straße||141": [13.4737609, 52.4616282], "Fritzi-Massary-Straße||143": [13.4740933, 52.4615806], "Fritzi-Massary-Straße||145": [13.4740933, 52.4615806], "Fritzi-Massary-Straße||147": [13.4742969, 52.4616461], "Fritzi-Massary-Straße||149": [13.4741557, 52.461774], "Fritzi-Massary-Straße||151": [13.4745929, 52.4611813], "Fritzi-Massary-Straße||153": [13.4745929, 52.4611813], "Fritzi-Massary-Straße||155": [13.474991, 52.4611871], "Fritzi-Massary-Straße||157": [13.4748408, 52.4611971], "Fritzi-Massary-Straße||159": [13.474681, 52.4611971], "Fritzi-Massary-Straße||161": [13.474581, 52.4611971], "Fritzi-Massary-Straße||163": [13.474481, 52.4611871], "Fritzi-Massary-Straße||165": [13.4743811, 52.4611871], "Fritzi-Massary-Straße||167": [13.4742811, 52.4611871], "Fritzi-Massary-Straße||169": [13.474121, 52.4611971], "Fritzi-Massary-Straße||171": [13.4739611, 52.4611971], "Fritzi-Massary-Straße||173": [13.473861, 52.4611971], "Fritzi-Massary-Straße||175": [13.473751, 52.4611871], "Fritzi-Massary-Straße||177": [13.4739245, 52.4616201], "Fritzi-Massary-Straße||179": [13.473531, 52.4611871], "Fritzi-Massary-Straße||181": [13.4734011, 52.4612271], "Fritzi-Massary-Straße||183": [13.473271, 52.4612671], "Fritzi-Massary-Straße||185": [13.473201, 52.4613171], "Fritzi-Massary-Straße||187": [13.473131, 52.4613571], "Fritzi-Massary-Straße||189": [13.473061, 52.4613971], "Fritzi-Massary-Straße||191": [13.472981, 52.4614371], "Fritzi-Massary-Straße||193": [13.4729434, 52.4615131], "Fritzi-Massary-Straße||195": [13.472741, 52.4615571], "Fritzi-Massary-Straße||197": [13.472734, 52.461628], "Fritzi-Massary-Straße||201": [13.4746372, 52.4611462], "Fritzi-Massary-Straße||203": [13.47464, 52.4611442], "Fritzi-Massary-Straße||205": [13.4746369, 52.4611443], "Fritzi-Massary-Straße||207": [13.4746402, 52.461146], "Fritzi-Massary-Straße||209": [13.4738902, 52.4615503], "Fritzi-Massary-Straße||211": [13.4746403, 52.461146], "Fritzi-Massary-Straße||213": [13.4746371, 52.4611443], "Fritzi-Massary-Straße||215": [13.47464, 52.4611441], "Fritzi-Massary-Straße||217": [13.4746369, 52.4611442], "Fritzi-Massary-Straße||219": [13.4746402, 52.461146], "Fritzi-Massary-Straße||221": [13.4746402, 52.4611461], "Fritzi-Massary-Straße||223": [13.4746372, 52.4611462], "Fritzi-Massary-Straße||225": [13.4746401, 52.4611441], "Fritzi-Massary-Straße||227": [13.4746372, 52.4611461], "Fritzi-Massary-Straße||229": [13.4729777, 52.4616724], "Fritzi-Massary-Straße||231": [13.4737442, 52.4611406], "Fritzi-Massary-Straße||233": [13.4737442, 52.4611406], "Fritzi-Massary-Straße||235": [13.4729468, 52.4617122], "Fritzi-Massary-Straße||237": [13.4729159, 52.4616817], "Fritzi-Massary-Straße||239": [13.4737442, 52.4611406], "Fritzi-Massary-Straße||241": [13.4737442, 52.4611406], "Fritzi-Massary-Straße||243": [13.4737442, 52.4611406], "Fritzi-Massary-Straße||245": [13.4727557, 52.4616198], "Fritzi-Massary-Straße||247": [13.4730802, 52.461339], "Fritzi-Massary-Straße||249": [13.4730802, 52.461339], "Fritzi-Massary-Straße||251": [13.4730802, 52.461339], "Fritzi-Massary-Straße||253": [13.4732958, 52.4615606], "Fritzi-Massary-Straße||255": [13.4727408, 52.4617737], "Fritzi-Massary-Straße||257": [13.4730802, 52.461339], "Fritzi-Massary-Straße||259": [13.4730802, 52.461339], "Fritzi-Massary-Straße||261": [13.4729742, 52.4615042], "Fritzi-Massary-Straße||263": [13.4727385, 52.4616415], "Fritzi-Massary-Straße||265": [13.4730802, 52.461339], "Fritzi-Massary-Straße||267": [13.4730802, 52.461339], "Fritzi-Massary-Straße||269": [13.4730802, 52.461339], "Heinrich-Schlusnus-Straße||1": [13.471952, 52.4648411], "Heinrich-Schlusnus-Straße||2": [13.4716, 52.465049], "Heinrich-Schlusnus-Straße||3": [13.4719895, 52.46458], "Heinrich-Schlusnus-Straße||4": [13.47119, 52.4653], "Heinrich-Schlusnus-Straße||5": [13.4718987, 52.4642109], "Heinrich-Schlusnus-Straße||6": [13.4708612, 52.4645549], "Heinrich-Schlusnus-Straße||7": [13.47191, 52.46395], "Heinrich-Schlusnus-Straße||8": [13.469534, 52.4637403], "Heinrich-Schlusnus-Straße||9": [13.4711188, 52.4642926], "Heinrich-Schlusnus-Straße||10": [13.4699658, 52.4634191], "Heinrich-Schlusnus-Straße||11": [13.4712133, 52.4640979], "Heinrich-Schlusnus-Straße||12": [13.4703664, 52.4630669], "Heinrich-Schlusnus-Straße||13": [13.4711701, 52.4639491], "Heinrich-Schlusnus-Straße||15": [13.471233, 52.4636146], "Heinrich-Schlusnus-Straße||17": [13.4712314, 52.4634876], "Heinrich-Schlusnus-Straße||19": [13.4712299, 52.4633607], "Heinrich-Schlusnus-Straße||21": [13.4712036, 52.4631949], "Heinrich-Schlusnus-Straße||23": [13.4712024, 52.4629894], "Joseph-Schmidt-Straße||1": [13.4741595, 52.4636125], "Joseph-Schmidt-Straße||3": [13.4741559, 52.4634847], "Joseph-Schmidt-Straße||4": [13.4735197, 52.4636179], "Joseph-Schmidt-Straße||5": [13.4741523, 52.463357], "Joseph-Schmidt-Straße||6": [13.4735496, 52.4634271], "Joseph-Schmidt-Straße||7": [13.4740941, 52.4631228], "Joseph-Schmidt-Straße||8": [13.4735395, 52.4632966], "Joseph-Schmidt-Straße||9": [13.4740791, 52.462932], "Joseph-Schmidt-Straße||10": [13.4735295, 52.4631459], "Joseph-Schmidt-Straße||11": [13.4747373, 52.4628186], "Joseph-Schmidt-Straße||12": [13.4735094, 52.4629652], "Joseph-Schmidt-Straße||13": [13.4744383, 52.4627504], "Joseph-Schmidt-Straße||14": [13.4735318, 52.4626385], "Joseph-Schmidt-Straße||15": [13.4741573, 52.4626888], "Joseph-Schmidt-Straße||16": [13.4735325, 52.4624817], "Joseph-Schmidt-Straße||17": [13.4741523, 52.4623382], "Joseph-Schmidt-Straße||18": [13.4735331, 52.4623249], "Joseph-Schmidt-Straße||19": [13.4741512, 52.4622482], "Joseph-Schmidt-Straße||20": [13.4735337, 52.4621681], "Joseph-Schmidt-Straße||21": [13.4741502, 52.4621583], "Joseph-Schmidt-Straße||22": [13.4735344, 52.4620113], "Joseph-Schmidt-Straße||23": [13.4741492, 52.4620683], "Leo-Slezak-Straße||5": [13.4725526, 52.4636107], "Leo-Slezak-Straße||6": [13.4720316, 52.4635738], "Leo-Slezak-Straße||7": [13.4726555, 52.4634369], "Leo-Slezak-Straße||8": [13.4721081, 52.4634677], "Leo-Slezak-Straße||9": [13.4726371, 52.4632478], "Leo-Slezak-Straße||10": [13.4720332, 52.4632172], "Leo-Slezak-Straße||11": [13.472662, 52.463128], "Leo-Slezak-Straße||12": [13.4720243, 52.4630984], "Leo-Slezak-Straße||13": [13.4727168, 52.4629384], "Leo-Slezak-Straße||14": [13.4720102, 52.4629716], "Leo-Slezak-Straße||15": [13.473257, 52.4628375], "Leo-Slezak-Straße||16": [13.4717422, 52.4628412], "Leo-Slezak-Straße||17": [13.4729972, 52.4627458], "Leo-Slezak-Straße||18": [13.4714781, 52.4627764], "Leo-Slezak-Straße||19": [13.4726745, 52.4625245], "Leo-Slezak-Straße||20": [13.4720556, 52.4626504], "Leo-Slezak-Straße||21": [13.4726726, 52.4624057], "Leo-Slezak-Straße||22": [13.4720585, 52.4624924], "Leo-Slezak-Straße||23": [13.4726588, 52.4621968], "Leo-Slezak-Straße||24": [13.4720613, 52.4623343], "Leo-Slezak-Straße||25": [13.472658, 52.4621273], "Leo-Slezak-Straße||26": [13.4720642, 52.4621763], "Leo-Slezak-Straße||27": [13.4726456, 52.4619881], "Leo-Slezak-Straße||28": [13.472067, 52.4620183], "Peter-Anders-Straße||1": [13.4750345, 52.4639147], "Peter-Anders-Straße||2": [13.4755981, 52.4638543], "Peter-Anders-Straße||2A": [13.4760726, 52.4637527], "Peter-Anders-Straße||3": [13.4750263, 52.4640792], "Peter-Anders-Straße||4": [13.4755987, 52.4639733], "Peter-Anders-Straße||5": [13.475018, 52.4642437], "Peter-Anders-Straße||6": [13.4755885, 52.4641567], "Peter-Anders-Straße||7": [13.4750098, 52.4644082], "Peter-Anders-Straße||8": [13.4755963, 52.4643035], "Peter-Anders-Straße||9": [13.4750016, 52.4645727], "Peter-Anders-Straße||10": [13.4755961, 52.4644001], "Peter-Anders-Straße||11": [13.474569, 52.4647098], "Peter-Anders-Straße||12": [13.4755855, 52.4645493], "Peter-Anders-Straße||13": [13.4745171, 52.4647244], "Peter-Anders-Straße||14": [13.4761297, 52.464763], "Peter-Anders-Straße||14A": [13.4761297, 52.464763], "Peter-Anders-Straße||15": [13.4750193, 52.4648679], "Peter-Anders-Straße||16": [13.4756211, 52.4648788], "Peter-Anders-Straße||17": [13.475019, 52.4650275], "Peter-Anders-Straße||18": [13.4756215, 52.4650378], "Peter-Anders-Straße||19": [13.4750186, 52.4651871], "Peter-Anders-Straße||20": [13.4756219, 52.4651967], "Peter-Anders-Straße||21": [13.4750183, 52.4653467], "Peter-Anders-Straße||22": [13.4756223, 52.4653557], "Peter-Anders-Straße||23": [13.475018, 52.4655063], "Peter-Anders-Straße||24": [13.4756227, 52.4655147], "Michael-Bohnen-Ring||1": [13.4765134, 52.4629691], "Michael-Bohnen-Ring||2": [13.4770365, 52.4630307], "Michael-Bohnen-Ring||3": [13.4765147, 52.4631305], "Michael-Bohnen-Ring||4": [13.4771255, 52.4631205], "Michael-Bohnen-Ring||5": [13.476516, 52.4632918], "Michael-Bohnen-Ring||6": [13.4771089, 52.4632436], "Michael-Bohnen-Ring||7": [13.4765174, 52.4634531], "Michael-Bohnen-Ring||8": [13.4771419, 52.4634887], "Michael-Bohnen-Ring||9": [13.4765187, 52.4636144], "Michael-Bohnen-Ring||10": [13.47716, 52.4636282], "Michael-Bohnen-Ring||11": [13.4765118, 52.4639285], "Michael-Bohnen-Ring||12": [13.47737, 52.4639548], "Michael-Bohnen-Ring||13": [13.4765122, 52.4640867], "Michael-Bohnen-Ring||14": [13.4776588, 52.4644174], "Michael-Bohnen-Ring||15": [13.4765125, 52.4642449], "Michael-Bohnen-Ring||16": [13.4770029, 52.4642326], "Michael-Bohnen-Ring||17": [13.4765129, 52.464403], "Michael-Bohnen-Ring||18": [13.4771264, 52.4648584], "Michael-Bohnen-Ring||19": [13.4765133, 52.4645612], "Michael-Bohnen-Ring||20": [13.4771229, 52.4649928], "Michael-Bohnen-Ring||21": [13.4765178, 52.464885], "Michael-Bohnen-Ring||22": [13.4771194, 52.4651272], "Michael-Bohnen-Ring||23": [13.476512, 52.4650418], "Michael-Bohnen-Ring||24": [13.4771159, 52.4652616], "Michael-Bohnen-Ring||25": [13.4765063, 52.4651985], "Michael-Bohnen-Ring||26": [13.4771124, 52.4653961], "Michael-Bohnen-Ring||27": [13.4765005, 52.4653553], "Michael-Bohnen-Ring||28": [13.4771089, 52.4655305], "Michael-Bohnen-Ring||29": [13.4764948, 52.465512], "Michael-Bohnen-Ring||31": [13.4763079, 52.4658771], "Michael-Bohnen-Ring||32": [13.4761486, 52.4660776], "Michael-Bohnen-Ring||33": [13.4760278, 52.4658758], "Michael-Bohnen-Ring||35": [13.4757977, 52.4659023], "Michael-Bohnen-Ring||37": [13.4755035, 52.4659018], "Michael-Bohnen-Ring||39": [13.4750734, 52.4658623], "Michael-Bohnen-Ring||41": [13.4748466, 52.4658623], "Michael-Bohnen-Ring||43": [13.4746374, 52.4659004], "Michael-Bohnen-Ring||45": [13.4744159, 52.4657523], "Michael-Bohnen-Ring||47": [13.4742147, 52.4655223], "Michael-Bohnen-Ring||49": [13.4742234, 52.4653423], "Michael-Bohnen-Ring||51": [13.4742136, 52.4651323], "Michael-Bohnen-Ring||52": [13.4734829, 52.4654171], "Michael-Bohnen-Ring||53": [13.4742236, 52.4649123], "Michael-Bohnen-Ring||54": [13.4734372, 52.4648063], "Sonnenallee||318": [13.47277, 52.4643], "Sonnenallee||319": [13.4726584, 52.46548], "Sonnenallee||320": [13.472221, 52.4639503], "Sonnenallee||321": [13.4726826, 52.4654621], "Sonnenallee||322": [13.47251, 52.46389], "Sonnenallee||323": [13.4725354, 52.4655238], "Sonnenallee||324": [13.47275, 52.46391], "Sonnenallee||326": [13.4726772, 52.4642014], "Sonnenallee||328": [13.4724656, 52.4639205], "Sonnenallee||330": [13.4728195, 52.4640378], "Sonnenallee||332": [13.4734587, 52.4651908], "Sonnenallee||334": [13.4729417, 52.4645216]};
+const norm=s=>(s||"").toString().normalize("NFC").replace(/\s+/g," ").trim();
+const NIDX={}; for(const k in COORDS){const [st,hn]=k.split("||");NIDX[norm(st).toLowerCase()+"|"+norm(hn).toLowerCase()]=COORDS[k];}
+function setStatus(i,t){document.querySelector("#hud .ic").textContent=i;document.getElementById("statustxt").innerHTML=t;}
+
+const PAPER="#E4E9EE", WATER="#CAD7DF", INKLINE="#909BA7", LANDFILL="#DCE2E7", LABEL="#4A5560";
+const map=new maplibregl.Map({container:"map",
+  style:"https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+  center:[13.4738,52.4632],zoom:15.5,pitch:52,bearing:-18,attributionControl:false});
+map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"bottom-right");
+
+function retint(){
+  for(const l of map.getStyle().layers){ try{
+    if(l.type==="background") map.setPaintProperty(l.id,"background-color",PAPER);
+    else if(l.type==="fill"){
+      if(/water/i.test(l.id)) map.setPaintProperty(l.id,"fill-color",WATER);
+      else if(/building/i.test(l.id)) map.setPaintProperty(l.id,"fill-opacity",0);
+      else { map.setPaintProperty(l.id,"fill-color",LANDFILL); }
+    }
+    else if(l.type==="line") map.setPaintProperty(l.id,"line-color",INKLINE);
+    else if(l.type==="symbol"){
+      if(/poi|natural|water_name|airport|continent/i.test(l.id)){ map.setLayoutProperty(l.id,"visibility","none"); }
+      else { map.setPaintProperty(l.id,"text-color",LABEL); try{map.setPaintProperty(l.id,"text-halo-color",PAPER);}catch(e){} }
+    }
+  }catch(e){} }
+}
+function buildings3d(){
+  let src=null; for(const l of map.getStyle().layers){if(l["source-layer"]==="building"){src=l.source;break;}}
+  if(!src) return;
+  let before; for(const l of map.getStyle().layers){if(l.type==="symbol"){before=l.id;break;}}
+  map.addLayer({id:"hd-buildings",type:"fill-extrusion",source:src,"source-layer":"building",minzoom:14,
+    paint:{"fill-extrusion-color":["interpolate",["linear"],["coalesce",["get","render_height"],10],
+        0,"#C7D0D8",12,"#BAC4CE",30,"#A9B4BF"],
+      "fill-extrusion-height":["coalesce",["get","render_height"],["get","height"],11],
+      "fill-extrusion-base":["coalesce",["get","render_min_height"],["get","min_height"],0],
+      "fill-extrusion-opacity":.9,"fill-extrusion-vertical-gradient":true}},before);
+}
+
+const SIZE=["interpolate",["linear"],["get","sig"],1,7,3,11,6,15,12,21,25,28];
+const TEMP=["interpolate",["linear"],["get","sig"],1,"#E9C45E",3,"#EFA84C",6,"#EC8044",9,"#E2553B",14,"#D8402F"];
+
+function rowsToGeoJSON(rows){
+  const feats=[];let skipped=[];
+  for(const r of rows){
+    const street=norm(pick(r,["street","straße","strasse"])), num=norm(pick(r,["house_number","hausnummer","nr","number"]));
+    if(!street||!num) continue;
+    let lng=parseFloat(pick(r,["lon","lng","longitude","x"])), lat=parseFloat(pick(r,["lat","latitude","y"]));
+    if(!(isFinite(lng)&&isFinite(lat))){const c=NIDX[street.toLowerCase()+"|"+num.toLowerCase()];
+      if(!c){skipped.push(street+" "+num);continue;} [lng,lat]=c;}
+    const sig=parseInt(pick(r,["signatures_count","signatures","unterschriften"])||"0",10)||0;
+    feats.push({type:"Feature",geometry:{type:"Point",coordinates:[lng,lat]},
+      properties:{label:norm(pick(r,["label"]))||street+" "+num,street,address:norm(pick(r,["address","adresse"])),sig}});
+  }
+  return {fc:{type:"FeatureCollection",features:feats},skipped,matched:feats.length};
+}
+function pick(r,names){for(const n of names){for(const k in r){if(k&&k.toLowerCase().trim()===n)return r[k];}}return undefined;}
+
+function addData(){
+  map.addSource("sigs",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+  map.addLayer({id:"sig-shadow",type:"circle",source:"sigs",filter:[">=",["get","sig"],1],
+    paint:{"circle-radius":["+",SIZE,3],"circle-color":"#2A3A48","circle-opacity":.10,"circle-blur":.7}});
+  map.addLayer({id:"sig-zero",type:"circle",source:"sigs",filter:["==",["get","sig"],0],
+    paint:{"circle-radius":5.5,"circle-color":"rgba(0,0,0,0)","circle-stroke-color":"#7E8B98","circle-stroke-width":1.5,"circle-opacity":1}});
+  map.addLayer({id:"sig-fill",type:"circle",source:"sigs",filter:[">=",["get","sig"],1],
+    paint:{"circle-radius":SIZE,"circle-color":TEMP,"circle-opacity":.95,
+      "circle-stroke-color":"#FBF6EE","circle-stroke-width":1.1}});
+  map.addLayer({id:"sig-count",type:"symbol",source:"sigs",filter:[">=",["get","sig"],1],
+    layout:{"text-field":["to-string",["get","sig"]],"text-font":["Metropolis Bold","Open Sans Bold"],
+      "text-size":["interpolate",["linear"],["get","sig"],1,10,12,14],"text-allow-overlap":true},
+    paint:{"text-color":"#20262C","text-halo-color":"rgba(255,255,255,.85)","text-halo-width":1.1}});
+  const pop=new maplibregl.Popup({closeButton:false,offset:13,maxWidth:"250px"});
+  const hit=["sig-fill","sig-zero"];
+  hit.forEach(id=>{
+    map.on("mouseenter",id,()=>map.getCanvas().style.cursor="pointer");
+    map.on("mouseleave",id,()=>{map.getCanvas().style.cursor="";pop.remove();});
+    const show=e=>{const p=e.features[0].properties;pop.setLngLat(e.features[0].geometry.coordinates)
+      .setHTML(`<div class="pop-l">${p.label}</div><div class="pop-a">${p.address||p.street}</div><div class="pop-s"><b>${p.sig}</b> Unterschrift${p.sig==1?"":"en"}</div>`).addTo(map);};
+    map.on("mousemove",id,show);map.on("click",id,show);
+  });
+}
+
+let firstLoad=true;
+function render(res){
+  const {fc,skipped,matched}=res;
+  if(matched===0){setStatus("⚠️","0 Häuser erkannt — Spalten/Reihenfolge prüfen.");return;}
+  map.getSource("sigs").setData(fc);
+  const tot=fc.features.reduce((s,f)=>s+f.properties.sig,0);
+  const withSig=fc.features.filter(f=>f.properties.sig>0).length, zeros=fc.features.length-withSig;
+  document.getElementById("tot").textContent=tot;
+  document.getElementById("sub").innerHTML=`<b>${withSig}</b> von <b>${fc.features.length}</b> Häusern mit Unterschriften<br><span class="z">${zeros} Häuser bei 0 — Besuch nötig</span>`;
+  setStatus("✓",`live · ${matched} Häuser${skipped.length?` · ${skipped.length} ohne Koordinaten`:""} · ${new Date().toLocaleTimeString("de-DE")}`);
+  if(skipped.length) console.warn("Ohne Koordinaten (Adresse nicht im Datensatz):",skipped);
+  if(firstLoad){const b=new maplibregl.LngLatBounds();fc.features.forEach(f=>b.extend(f.geometry.coordinates));
+    try{map.fitBounds(b,{padding:{top:90,bottom:80,left:330,right:70},pitch:52,bearing:-18,maxZoom:16.6,duration:0});}catch(e){}
+    firstLoad=false;}
+}
+function refresh(){
+  setStatus("⏳","Lädt Daten …");
+  const cb="gviz_"+Date.now(), s=document.createElement("script");
+  window[cb]=function(resp){
+    try{
+      const t=resp.table, cols=(t.cols||[]).map(c=>(c.label||"").toString().trim());
+      const byName=(t.rows||[]).map(r=>{const o={};(r.c||[]).forEach((cell,i)=>{o[cols[i]||("col"+i)]=cell?cell.v:null;});return o;});
+      const order=["Label","street","house_number","address","signatures_count"];
+      const byPos=(t.rows||[]).map(r=>{const o={};order.forEach((k,i)=>{o[k]=(r.c&&r.c[i])?r.c[i].v:null;});return o;});
+      const a=rowsToGeoJSON(byName), b=rowsToGeoJSON(byPos);
+      render(b.matched>a.matched?b:a);
+    }catch(e){setStatus("⚠️","Parsefehler: "+e.message);}
+    delete window[cb]; s.remove();
+  };
+  s.onerror=function(){setStatus("⚠️","Daten nicht erreichbar. Sheet auf „Jeder mit Link · Betrachter“ stellen und die Datei direkt im Browser öffnen.");delete window[cb];s.remove();};
+  s.src=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${GID}&headers=1&tqx=out:json;responseHandler:${cb}&_=`+Date.now();
+  document.body.appendChild(s);
+}
+map.on("error",()=>{ if(document.getElementById("tot").textContent==="–") setStatus("⚠️","Karte konnte nicht laden — Internetverbindung?"); });
+map.on("load",()=>{ try{retint();}catch(e){} try{buildings3d();}catch(e){} addData(); refresh(); setInterval(refresh,REFRESH_MS); });
+document.getElementById("refresh").onclick=refresh;
+</script>
+</body>
+</html>
